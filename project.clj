@@ -16,8 +16,12 @@
                  [metrics-clojure "2.4.0"]
                  [ch.qos.logback/logback-classic "1.1.2"]
                  [org.clojure/tools.logging "0.3.1"]
+                 [com.google.guava/guava "18.0"]
+                 [slingshot "0.12.1"]
+                 [com.stuartsierra/component "0.2.2"]
                  ]
   :main forklift.main
-  :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"]
+  :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"
+             "-Dco.paralleluniverse.fibers.verifyInstrumentation"]
   :java-agents [[co.paralleluniverse/quasar-core "0.6.2"]]
   )

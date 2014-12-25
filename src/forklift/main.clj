@@ -1,4 +1,5 @@
 (ns forklift.main
+  "Main function for Forklift"
   (:require [clojure.tools.logging :refer [info debug error]])
   (:gen-class)
   )
