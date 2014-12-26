@@ -5,6 +5,7 @@
             [plumbing.core :refer [defnk]]
             [com.redbrainlabs.system-graph :as system-graph]
             [forklift.metrics :as metrics]
+            [forklift.load-tester :as load-tester]
             )
   )
 
@@ -16,6 +17,9 @@
 
 (defnk console-reporter [metrics]
   (metrics/->ConsoleReporter metrics))
+
+(defnk load-tester [metrics]
+  (load-tester/->LoadTester metrics))
 
 (defrecord ForkliftApp [metrics]
   component/Lifecycle
@@ -35,9 +39,10 @@
 
 (def forklift-graph
   {:metrics metrics
-   ;;:console-reporter console-reporter
+   :console-reporter console-reporter
    :jmx-reporter jmx-reporter
    :forklift-app forklift-app
+   :load-tester load-tester
    })
 
 

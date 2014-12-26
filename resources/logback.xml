@@ -11,7 +11,7 @@
       <onMismatch>NEUTRAL</onMismatch>
     </filter>
     <encoder>
-      <pattern>%date{"HH:mm:ss,SSS"} %-5p %c %msg%n</pattern>
+      <pattern>%date{"HH:mm:ss,SSS"} [%thread] %-5p %c %msg%n</pattern>
     </encoder>
   </appender>
 
@@ -20,7 +20,7 @@
       <level>WARN</level>
     </filter>
     <encoder>
-      <pattern>%date{"HH:mm:ss,SSS"} %-5p %c %msg%n</pattern>
+      <pattern>%date{"HH:mm:ss,SSS"} [%thread] %-5p %c %msg%n</pattern>
     </encoder>
     <target>System.err</target>
   </appender>

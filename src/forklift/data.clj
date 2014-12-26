@@ -2,8 +2,7 @@
   (:require [co.paralleluniverse.pulsar.core :refer
              [spawn-fiber join suspendable! defsfn]]
             [slingshot.slingshot :refer [try+ throw+]]
-            [clojure.tools.logging :refer [info debug error]]
-            [metrics.core :refer [default-registry]]
+            [clojure.tools.logging :refer [trace debug info error]]
             [metrics.meters :as meters]
             [metrics.timers :as timers]
             )
@@ -14,7 +13,6 @@
   )
 
 
-(def registry default-registry)
 
 (defn operation [desc func type]
   {:fn (suspendable! func)
@@ -62,43 +60,44 @@
       )))
 
 
-(defsfn exec-operation [ops ctx]
+(defsfn exec-operation [system ops scn-ctx]
   (let [op (first ops)
 
         ]
     (when op
-      (let [scenario-name (-> ctx ::scenario :desc)
+      (let [scenario-name (-> scn-ctx ::scenario :desc)
             operation-name (op :desc)
             func (-> op :fn)
+            registry (-> system :metrics :registry)
             timer (timers/timer registry [scenario-name operation-name "runtime"])
             timer-ctx (timers/start timer)
             ]
         (info scenario-name " / " operation-name)
-        (func ctx)
+        (func scn-ctx)
         (timers/stop timer-ctx)
-        (recur (rest ops) ctx)
+        (recur system (rest ops) scn-ctx)
         )
       )
     ))
 
-(defsfn execute-scenario [scenario params]
+(defsfn execute-scenario [system scenario params]
   (info "Run scenario:" (-> scenario :desc))
 
-  (let [ctx {:params params
-             ::scenario scenario}
+  (let [scn-ctx {:params params
+                 ::scenario scenario}
         ops (-> scenario :ops)]
 
-    (exec-operation ops ctx)
+    (exec-operation system ops scn-ctx)
 
     :ok
     ))
 
 
-(defn start-run [suite]
+(defn start-run [system suite]
   (let [{:keys [scenario
                 params] :as data} suite
         scn-name (-> scenario :name)
-        fiber (spawn-fiber :name (str "Fiber-" scn-name) execute-scenario scenario params)
+        fiber (spawn-fiber :name (str "Fiber-" scn-name) execute-scenario system scenario params)
         ]
     fiber
     ))
@@ -115,51 +114,57 @@
     )
   )
 
-(defn constant-rate-loader [opts suite running]
-  (debug "constant-rate-load" opts)
+(defn constant-rate-loader [system opts suite]
+  (debug "Create constant-rate-loader" opts)
   (let [{:keys [rate
                 scenario
                 warmup-period]} opts
+        {:keys [running]} system
         rate-limiter (RateLimiter/create (double rate) warmup-period TimeUnit/SECONDS)
-        fibers (atom #{})
+        ;;fibers (atom #{})
         ]
 
     (while @running
+      (debug "Aqcuiring slot")
       (.acquire rate-limiter)
-      (info "Acquired slot")
+      (debug "Acquired slot")
 
-      (let [fiber (start-run suite)]
+      (let [fiber (start-run system suite)]
         ;; TODO how to handle dangling fibers?
         ;;(swap! fibers conj fiber)
         ;;(info (count @fibers) " fibers created")
         ;;(clean-fibers fibers)
         )
       )
-    (info "Clean up fibers")
-    (join @fibers)
-    (info "Cleaned")
+    (debug "Stop constant-rate-loader")
+    ;;(info "Clean up fibers")
+    ;;(join @fibers)
+    ;;(info "Cleaned")
     )
 
   )
 
-(defn create-loader [suite running]
-  (let [{:keys [load]} suite
+(defn create-loader [system suite]
+  (info "create-loader"  )
+  (let [load (-> suite :load)
         type (-> load :type)]
     (cond (= type :constant-rate)
-          (future (constant-rate-loader (suite :load) suite running))
+          (future (constant-rate-loader system (suite :load) suite))
           :default (throw+ {:error :unsupported-load-type
                             :msg (str type " is not supported")})
           )
     ))
 
-(defn run-load [opts & suites]
-  (info "run-load start")
+
+(defn run-load
+  "Starts load-test asynchronously."
+  [system suites]
+  (info "run-load start" suites)
   ;; TODO validate scenarios with schema?
-  (let [running (atom true)
-        loader-futures (doall (map #(create-loader % running) suites))
+  (let [loader-futures (doall (map #(create-loader system %) suites))
         ]
     (debug "loader threads created")
+    loader-futures
     )
-  (info "run-load end")
   )
 
