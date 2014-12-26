@@ -14,14 +14,22 @@
                  ;;(pause 10)
                  (exec "Operation 2"
                        func2)
-                 (pause 1000)
+                 (pause 100)
                  (exec "Oper 3" func3))]
 
     (run-load {}
-              {:scenario s :desc "run1" :params {:a 1} }
-              {:scenario s :desc "run2"}
-              {:scenario s :desc "run3"}
-              {:scenario s :desc "run4"}
+              {:scenario s :desc "run1" :params {:a 1}
+               :load {:type :constant-rate
+                      ;; number of new users per second
+                      :rate 1
+                      ;; rampup period in seconds
+                      :warmup-period 15}}
+              {:scenario s :desc "run2" :params {:a 1}
+               :load {:type :constant-rate
+                      ;; number of new users per second
+                      :rate 2.1
+                      ;; rampup period in seconds
+                      :warmup-period 30}}
               )
     )
   )

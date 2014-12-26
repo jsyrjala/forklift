@@ -6,7 +6,8 @@
             )
   (:import co.paralleluniverse.strands.Strand
            co.paralleluniverse.fibers.Fiber
-           com.google.common.util.concurrent.RateLimiter)
+           com.google.common.util.concurrent.RateLimiter
+           java.util.concurrent.TimeUnit)
 
 )
 
@@ -34,7 +35,7 @@
    (operation desc
               (fn pause [ctx]
                 (debug "pause start")
-                (Strand/sleep duration)
+                (Fiber/sleep duration)
                 (debug "pause end")
                 )))
   ([desc lower upper]
@@ -82,25 +83,52 @@
   ))
 
 
-(defn handle-run [run]
+(defn start-run [suite]
   (let [{:keys [scenario
-                users
-                duration
-                rampup
-                prefix-idle
-                params] :as data} run
+                params] :as data} suite
         scn-name (-> scenario :name)
         fiber (spawn-fiber :name (str "Fiber-" scn-name) execute-scenario scenario params)
        ]
    fiber
   ))
 
-(defn run-load [opts & scenarios]
+
+
+(defn constant-rate-loader [opts suite running]
+  (debug "constant-rate-load" opts)
+  (let [{:keys [rate
+                scenario
+                warmup-period]} opts
+        rate-limiter (RateLimiter/create (double rate) warmup-period TimeUnit/SECONDS)
+        ]
+    (while @running
+      (.acquire rate-limiter)
+      (info "Acquired slot")
+
+      (let [fiber (start-run suite)]
+        ;; TODO how to handle dangling fibers?
+        )
+      )
+    )
+  )
+
+(defn create-loader [suite running]
+  (let [{:keys [load]} suite
+        type (-> load :type)]
+    (cond (= type :constant-rate)
+      (future (constant-rate-loader (suite :load) suite running))
+      :default (throw+ {:error :unsupported-load-type
+                        :msg (str type " is not supported")})
+      )
+
+    ))
+(defn run-load [opts & suites]
   (info "run-load start")
   ;; TODO validate scenarios with schema?
-  (let [fibers (doall (map handle-run scenarios))]
-    (debug "fibers created" )
-    (join fibers)
+  (let [running (atom true)
+        loader-futures (doall (map #(create-loader % running) suites))
+        ]
+    (debug "loader threads created")
 
     )
   (info "run-load end")
