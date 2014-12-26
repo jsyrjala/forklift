@@ -18,7 +18,12 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [com.google.guava/guava "18.0"]
                  [slingshot "0.12.1"]
+                 [prismatic/schema "0.3.3"]
+                 [prismatic/plumbing "0.3.5"]
                  [com.stuartsierra/component "0.2.2"]
+                 [com.redbrainlabs/system-graph "0.2.0"]
+                 [clj-time "0.9.0"]
+                 [org.clojure/tools.cli "0.3.1"]
                  ]
   :main forklift.main
   :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"

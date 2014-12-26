@@ -1,4 +1,4 @@
-(ns forklift.core-test
+(ns forklift.data-test
   (:require [clojure.test :refer :all]
             [midje.sweet :refer :all]
             [forklift.data :refer :all]))
@@ -14,9 +14,11 @@
       =>
       {:desc "Scenario name"
        :ops [{:desc "Operation 1"
-              :fn func1}
+              :fn func1
+              :type :exec}
              {:desc "Operation 2"
-              :fn func2}]})
+              :fn func2
+              :type :exec}]})
 
 
 
