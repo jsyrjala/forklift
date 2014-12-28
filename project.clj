@@ -14,6 +14,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [co.paralleluniverse/pulsar "0.6.2"]
                  [metrics-clojure "2.4.0"]
+                 [metrics-clojure-graphite "2.4.0"]
                  [ch.qos.logback/logback-classic "1.1.2"]
                  [org.clojure/tools.logging "0.3.1"]
                  [com.google.guava/guava "18.0"]

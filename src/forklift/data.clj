@@ -60,7 +60,7 @@
       )))
 
 
-(defsfn exec-operation [system ops scn-ctx]
+(defsfn exec-operations [system ops scn-ctx]
   (let [op (first ops)
 
         ]
@@ -85,21 +85,36 @@
 
   (let [scn-ctx {:params params
                  ::scenario scenario}
-        ops (-> scenario :ops)]
+        ops (-> scenario :ops)
+        {:keys [stats]} system]
 
-    (exec-operation system ops scn-ctx)
-
+    (info "stats" @stats)
+    (try
+      (swap! stats update-in [:scenarios :concurrent] inc)
+      (swap! stats update-in [:scenarios :started] inc)
+      (exec-operations system ops scn-ctx)
+      (catch Exception e
+        (error e "exec-operations failed")
+        )
+      (finally
+       (swap! stats update-in [:scenarios :concurrent] dec)
+       (swap! stats update-in [:scenarios :finished] inc)))
     :ok
     ))
 
+(defn- create-fiber [name system scenario params]
+  (spawn-fiber :name (str "Fiber-" name) execute-scenario system scenario params))
+
+(defn- create-thread [name system scenario params]
+  (future (execute-scenario system scenario params)))
 
 (defn start-run [system suite]
   (let [{:keys [scenario
                 params] :as data} suite
         scn-name (-> scenario :name)
-        fiber (spawn-fiber :name (str "Fiber-" scn-name) execute-scenario system scenario params)
+        strand (create-thread scn-name system scenario params)
         ]
-    fiber
+    strand
     ))
 
 ;; TODO not good?
@@ -120,7 +135,7 @@
                 scenario
                 warmup-period]} opts
         {:keys [running]} system
-        rate-limiter (RateLimiter/create (double rate) warmup-period TimeUnit/SECONDS)
+        rate-limiter (RateLimiter/create (double rate) (or warmup-period 0) TimeUnit/SECONDS)
         ;;fibers (atom #{})
         ]
 

@@ -30,21 +30,10 @@
         suites [{:scenario s :desc "run1" :params {:a 1}
                  :load {:type :constant-rate
                         ;; number of new users per second
-                        :rate 6
-                        ;; rampup period in seconds
-                        :warmup-period 15}}
-                {:scenario s :desc "run2" :params {:a 1}
-                 :load {:type :constant-rate
-                        ;; number of new users per second
                         :rate 10
                         ;; rampup period in seconds
-                        :warmup-period 15}}
-                {:scenario s :desc "run3" :params {:a 1}
-                 :load {:type :constant-rate
-                        ;; number of new users per second
-                        :rate 36
-                        ;; rampup period in seconds
-                        :warmup-period 115}}
+                        :warmup-period 60}}
+
               ]
 
         load-tester (:load-tester system)
@@ -55,4 +44,5 @@
       (doall (map deref loaders)))
 
   (info "run end")
+  (shutdown-agents)
   )
