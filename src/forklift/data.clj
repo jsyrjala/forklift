@@ -134,12 +134,12 @@
   (let [{:keys [rate
                 scenario
                 warmup-period]} opts
-        {:keys [running]} system
+        {:keys [running-fn]} system
         rate-limiter (RateLimiter/create (double rate) (or warmup-period 0) TimeUnit/SECONDS)
         ;;fibers (atom #{})
         ]
 
-    (while @running
+    (while (running-fn)
       (debug "Aqcuiring slot")
       (.acquire rate-limiter)
       (debug "Acquired slot")

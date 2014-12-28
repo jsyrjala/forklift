@@ -47,15 +47,14 @@
                (fn [] (-> @stats :scenarios :started)))
      (gauge-fn registry ["global" "scenarios" "finished"]
                (fn [] (-> @stats :scenarios :finished)))
-     (assoc this :running running
+     (assoc this :running-fn (fn [] @running)
        :stats stats)
      ))
   (start-load-test
    [this suites]
-   (let [{:keys [running
+   (let [{:keys [running-fn
                  stats]} this]
-     (debug "start load test" running)
-     (forklift/run-load {:running running
+     (forklift/run-load {:running-fn running-fn
                          :metrics metrics
                          :stats stats}
                         suites)
