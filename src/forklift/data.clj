@@ -1,21 +1,17 @@
 (ns forklift.data
-  (:require [co.paralleluniverse.pulsar.core :refer
-             [spawn-fiber join suspendable! defsfn]]
-            [slingshot.slingshot :refer [try+ throw+]]
+  (:require [slingshot.slingshot :refer [try+ throw+]]
             [clojure.tools.logging :refer [trace debug info error]]
             [metrics.meters :as meters]
             [metrics.timers :as timers]
             )
-  (:import co.paralleluniverse.strands.Strand
-           co.paralleluniverse.fibers.Fiber
-           com.google.common.util.concurrent.RateLimiter
-           java.util.concurrent.TimeUnit)
+  (:import [com.google.common.util.concurrent RateLimiter]
+           [java.util.concurrent TimeUnit]
+           [java.util.concurrent Semaphore])
   )
 
 
-
 (defn operation [desc func type]
-  {:fn (suspendable! func)
+  {:fn func
    :desc desc
    :type type})
 
@@ -38,7 +34,7 @@
    (operation desc
               (fn pause [ctx]
                 (debug "pause start")
-                (Strand/sleep duration)
+                (Thread/sleep duration)
                 (debug "pause end")
                 )
               :pause))
@@ -60,7 +56,7 @@
       )))
 
 
-(defsfn exec-operations [system ops scn-ctx]
+(defn exec-operations [system ops scn-ctx]
   (let [op (first ops)
 
         ]
@@ -80,7 +76,7 @@
       )
     ))
 
-(defsfn execute-scenario [system scenario params]
+(defn execute-scenario [system scenario params finish-fn]
   (info "Run scenario:" (-> scenario :desc))
 
   (let [scn-ctx {:params params
@@ -98,36 +94,20 @@
         )
       (finally
        (swap! stats update-in [:scenarios :concurrent] dec)
-       (swap! stats update-in [:scenarios :finished] inc)))
+       (swap! stats update-in [:scenarios :finished] inc)
+       (finish-fn)))
     :ok
     ))
 
-(defn- create-fiber [name system scenario params]
-  (spawn-fiber :name (str "Fiber-" name) execute-scenario system scenario params))
+(defn- create-thread [name system scenario params finish-fn]
+  (future (execute-scenario system scenario params finish-fn)))
 
-(defn- create-thread [name system scenario params]
-  (future (execute-scenario system scenario params)))
-
-(defn start-run [system suite]
+(defn start-run [system suite finish-fn]
   (let [{:keys [scenario
                 params] :as data} suite
-        scn-name (-> scenario :name)
-        strand (create-thread scn-name system scenario params)
-        ]
-    strand
+        scn-name (-> scenario :name)]
+    (create-thread scn-name system scenario params finish-fn)
     ))
-
-;; TODO not good?
-(defn- clean-fibers [fibers]
-  (doseq [fiber @fibers]
-    (try+
-     (join 1 :ns fiber)
-     (swap! fibers disj fiber)
-     (catch java.util.concurrent.TimeoutException _
-       ;; ignore
-       ))
-    )
-  )
 
 (defn constant-rate-loader [system opts suite]
   (debug "Create constant-rate-loader" opts)
@@ -136,7 +116,6 @@
                 warmup-period]} opts
         {:keys [running-fn]} system
         rate-limiter (RateLimiter/create (double rate) (or warmup-period 0) TimeUnit/SECONDS)
-        ;;fibers (atom #{})
         ]
 
     (while (running-fn)
@@ -145,26 +124,35 @@
       (debug "Acquired slot")
 
       (let [fiber (start-run system suite)]
-        ;; TODO how to handle dangling fibers?
-        ;;(swap! fibers conj fiber)
-        ;;(info (count @fibers) " fibers created")
-        ;;(clean-fibers fibers)
         )
       )
     (debug "Stop constant-rate-loader")
-    ;;(info "Clean up fibers")
-    ;;(join @fibers)
-    ;;(info "Cleaned")
     )
-
   )
 
+(defn constant-users-loader [system opts suite]
+  (debug "Create constant-users-loader" opts)
+  (let [{:keys [users
+                scenario
+                warmup-period]} opts
+        {:keys [running-fn]} system
+        user-slots (new Semaphore users)
+        ]
+    (while (running-fn)
+      ;; TODO use tryAcquire with timeout
+      (.acquire user-slots)
+      (start-run system suite (fn [] (.release user-slots)))
+    )
+  ))
+
 (defn create-loader [system suite]
-  (info "create-loader"  )
   (let [load (-> suite :load)
         type (-> load :type)]
+    (info "create-loader " type load suite)
     (cond (= type :constant-rate)
           (future (constant-rate-loader system (suite :load) suite))
+          (= type :constant-users)
+          (future (constant-users-loader system (suite :load) suite))
           :default (throw+ {:error :unsupported-load-type
                             :msg (str type " is not supported")})
           )

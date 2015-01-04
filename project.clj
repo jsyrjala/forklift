@@ -12,7 +12,6 @@
                     ]}
              :uberjar {:aot [forklift.main]}}
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [co.paralleluniverse/pulsar "0.6.2"]
                  [metrics-clojure "2.4.0"]
                  [metrics-clojure-graphite "2.4.0"]
                  [ch.qos.logback/logback-classic "1.1.2"]
@@ -27,7 +26,5 @@
                  [org.clojure/tools.cli "0.3.1"]
                  ]
   :main forklift.main
-  :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"
-             "-Dco.paralleluniverse.fibers.verifyInstrumentation"]
-  :java-agents [[co.paralleluniverse/quasar-core "0.6.2"]]
+  :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"]
   )

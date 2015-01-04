@@ -15,7 +15,13 @@
     (alter-var-root #'system (constantly app))
     )
 
-
+(comment
+                {:scenario s :desc "run1" :params {:a 1}
+                 :load {:type :constant-rate
+                        ;; number of new users per second
+                        :rate 10
+                        ;; rampup period in seconds
+                        :warmup-period 60}})
   (let [func1 (fn [ctx] (info "exec func1") )
         func2 (fn [ctx] (info "exec func2") 2)
         func3 (fn [ctx] (info "exec func3") 3)
@@ -27,12 +33,12 @@
                        func2)
                  (pause 200)
                  (exec "Oper 3" func3))
-        suites [{:scenario s :desc "run1" :params {:a 1}
-                 :load {:type :constant-rate
-                        ;; number of new users per second
-                        :rate 10
-                        ;; rampup period in seconds
-                        :warmup-period 60}}
+        suites [
+                {:scenario s :desc "run2" :rapams {:a 1}
+                 :load {:type :constant-users
+                        :users 250
+                        :warmup-period 60
+                        }}
 
               ]
 

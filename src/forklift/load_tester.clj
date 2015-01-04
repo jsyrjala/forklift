@@ -10,10 +10,11 @@
 
 
 (defprotocol ILoaderFactory
-  ""
+  "TODO experimental"
   (create-loader [this opts suite running])
   )
 
+;; "TODO experimental"
 (defrecord LoaderFactory [metrics]
   Lifecycle
   ILoaderFactory
