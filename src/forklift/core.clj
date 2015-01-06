@@ -16,9 +16,10 @@
     (alter-var-root #'system (constantly app))
     )
 
-  (let [suites [nflow/basic-suite]
+  (let [suite-config {:duration (* 10 1000)
+                      :suites [nflow/basic-suite2]}
         load-tester (:load-tester system)
-        loaders (lt/start-load-test load-tester suites)
+        loaders (lt/start-load-test load-tester suite-config)
         ]
 
     (doall (map deref loaders)))

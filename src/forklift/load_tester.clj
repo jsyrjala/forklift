@@ -29,6 +29,18 @@
 (defprotocol ILoadTester
   (start-load-test [this load-suite]))
 
+(defn- running-creator [duration]
+  (let [start (System/currentTimeMillis)
+        endtime (+ start duration)]
+    (fn []
+      (let [now (System/currentTimeMillis)]
+        (if (> endtime now)
+          true
+          (do
+            (info "Stopping load generation. Forklift has been running over timelimit" duration "milliseconds")
+            false)
+          )
+        ))))
 
 (defrecord LoadTester [metrics]
   Lifecycle
@@ -37,7 +49,6 @@
    [this]
    (debug "LoadTester starting")
    (let [registry (-> metrics :registry)
-         running (atom true)
          stats (atom {:scenarios
                       {:concurrent 0
                        :started 0
@@ -48,17 +59,17 @@
                (fn [] (-> @stats :scenarios :started)))
      (gauge-fn registry ["global" "scenarios" "finished"]
                (fn [] (-> @stats :scenarios :finished)))
-     (assoc this :running-fn (fn [] @running)
-       :stats stats)
+     (assoc this :stats stats)
      ))
   (start-load-test
-   [this suites]
-   (let [{:keys [running-fn
-                 stats]} this]
+   [this suite-config]
+   (let [{:keys [stats]} this
+         duration (-> suite-config :duration)
+         running-fn (running-creator duration)]
      (forklift/run-load {:running-fn running-fn
                          :metrics metrics
                          :stats stats}
-                        suites)
+                        (suite-config :suites))
      ))
   (stop
    [this]

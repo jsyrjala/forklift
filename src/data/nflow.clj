@@ -7,7 +7,7 @@
 
 
 (defn create-workflow [ctx]
-  (info "create-workflow" ctx)
+  ;;(info "create-workflow" ctx)
   (let [{:keys [workflow-ids
                 nflow-url
                 workflow-type]} (-> ctx :params)
@@ -39,3 +39,12 @@
           :warmup-period 60
   }})
 
+(def basic-suite2
+  {:scenario basic-workflow
+   :desc ""
+   :params {:nflow-url "http://localhost:7500/api"
+            :workflow-type "demo"
+            :workflow-ids (atom [])}
+   :load {:type :constant-rate
+          :rate 1
+  }})

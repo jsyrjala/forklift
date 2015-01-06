@@ -122,7 +122,7 @@
       (.acquire rate-limiter)
       (debug "Acquired slot")
 
-      (start-run system suite)
+      (start-run system suite (fn []) )
       )
     (debug "Stop constant-rate-loader")
     )
