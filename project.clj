@@ -24,6 +24,10 @@
                  [com.redbrainlabs/system-graph "0.2.0"]
                  [clj-time "0.9.0"]
                  [org.clojure/tools.cli "0.3.1"]
+
+                 [clj-http "1.0.1"]
+                 [cheshire "5.4.0"]
+
                  ]
   :main forklift.main
   :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"]

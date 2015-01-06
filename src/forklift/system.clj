@@ -48,7 +48,7 @@
    :console-reporter console-reporter
    :jmx-reporter jmx-reporter
    :csv-reporter csv-reporter
-   ;;:graphite-reporter graphite-reporter
+   :graphite-reporter graphite-reporter
    :forklift-app forklift-app
    :load-tester load-tester
    })

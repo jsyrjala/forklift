@@ -57,9 +57,7 @@
 
 
 (defn exec-operations [system ops scn-ctx]
-  (let [op (first ops)
-
-        ]
+  (let [op (first ops)]
     (when op
       (let [scenario-name (-> scn-ctx ::scenario :desc)
             operation-name (op :desc)
@@ -120,11 +118,11 @@
 
     (while (running-fn)
       (debug "Aqcuiring slot")
+      ;; TODO use timeout
       (.acquire rate-limiter)
       (debug "Acquired slot")
 
-      (let [fiber (start-run system suite)]
-        )
+      (start-run system suite)
       )
     (debug "Stop constant-rate-loader")
     )
