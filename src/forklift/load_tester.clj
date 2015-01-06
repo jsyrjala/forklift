@@ -64,12 +64,22 @@
   (start-load-test
    [this suite-config]
    (let [{:keys [stats]} this
-         duration (-> suite-config :duration)
+         {:keys [duration
+                 before-fn
+                 after-fn
+                 suites]} suite-config
          running-fn (running-creator duration)]
-     (forklift/run-load {:running-fn running-fn
-                         :metrics metrics
-                         :stats stats}
-                        (suite-config :suites))
+     (when before-fn
+       (before-fn suite-config))
+     (let [loaders (forklift/run-load {:running-fn running-fn
+                                       :metrics metrics
+                                       :stats stats}
+                                      suites)]
+       (doall (map deref loaders)))
+     (when after-fn
+       ;; TODO exec threads are still running at this point
+       ;; TODO change loaders to wait for all sub threads to finish
+       (after-fn suite-config))
      ))
   (stop
    [this]

@@ -92,4 +92,10 @@
                    ;; => all loaders stop after N millis
                    :duration (* 10 1000)
                    :suites [;;basic-suite-users
-                            basic-suite-rate]})
+                            basic-suite-rate]
+                   ;; execute function before starting
+                   :before-fn (fn [suite-config]
+                                (info "before-fn called"))
+                   ;; execute after finishing
+                   :after-fn (fn [suite-config]
+                               (info "after-fn called"))})
