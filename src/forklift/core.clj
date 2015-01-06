@@ -10,7 +10,7 @@
 (def system)
 
 (defn run [& args]
-  (println "started")
+  (println "Forklift started")
 
   (let [app (component/start (system/create-dev-system))]
     (alter-var-root #'system (constantly app))

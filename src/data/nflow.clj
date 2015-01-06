@@ -13,9 +13,11 @@
 ;; function that is tested
 ;; Function must take single parameter ctx
 ;; ctx => {:params somedata} - somedata is defined in suite configuration
-;; Function must return ctx
-;; Function can modify ctx
+;; Function can modify ctx for following ops by returning modified ctx
+;; e.g. make a request, store some data to ctx and following ops may use the data
+;;
 (defn create-workflow [ctx]
+  (trace ctx)
   (let [{:keys [workflow-ids
                 nflow-url
                 workflow-type]} (-> ctx :params)
@@ -25,10 +27,10 @@
                                  :content-type :json
                                  :as :json
                                  :body (json/generate-string body)})]
-    (trace "result" result)
-    (let [workflow-id (-> result :body :id)]
-      (swap! workflow-ids conj workflow-id))
-  ))
+
+    (let [workflow-id (-> result :body :id)
+          x (assoc ctx (str "xxx-" workflow-id) workflow-id)]
+      (swap! workflow-ids conj workflow-id))))
 
 ;; scenario is one use case, test case or a sequence operations
 ;; executed by a single user
@@ -73,6 +75,8 @@
   {:scenario basic-workflow
    :desc "Constant rate"
    ;; TODO needs to have global-params and run-params
+   ;; global params do not reset between runs
+   ;; run-params reset between runs
    :params {:nflow-url "http://localhost:7500/api"
             :workflow-type "demo"
             :workflow-ids (atom [])}
@@ -80,11 +84,12 @@
           :type :constant-rate
           :rate 1
           ;; rampup period in seconds
-          :warmup-period 60
+          :warmup-period 1
   }})
 
 ;; suite config is a list of suites and ending condition
 (def suite-config {;; duration of loading run in millis
+                   ;; => all loaders stop after N millis
                    :duration (* 10 1000)
-                   :suites [basic-suite-users
+                   :suites [;;basic-suite-users
                             basic-suite-rate]})

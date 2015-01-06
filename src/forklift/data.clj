@@ -25,7 +25,10 @@
   "TODO"
   [desc func]
   (operation desc func :exec))
+;; TODO implement config op
+;; same as exec but not measured
 
+;; TODO do not measure pauses
 (defn pause
   "TODO"
   ([duration]
@@ -36,6 +39,7 @@
                 (trace "pause start")
                 (Thread/sleep duration)
                 (trace "pause end")
+                ctx
                 )
               :pause))
   ([desc lower upper]
@@ -57,6 +61,7 @@
 
 
 (defn exec-operations [system ops scn-ctx]
+  ;; recursive function, execute first operation on each iteration
   (let [op (first ops)]
     (when op
       (let [scenario-name (-> scn-ctx ::scenario :desc)
@@ -67,10 +72,15 @@
             timer-ctx (timers/start timer)
             ]
         (info scenario-name " / " operation-name)
-        (func scn-ctx)
-        (timers/stop timer-ctx)
-        (recur system (rest ops) scn-ctx)
-        )
+        (let [new-scn-ctx (func scn-ctx)
+              ;; check that new-scn-ctx is valid ctx
+              ;; use previous ctx otherwise
+              new-scn-ctx (if (and (map? new-scn-ctx)
+                                   (::scenario new-scn-ctx))
+                            new-scn-ctx
+                            scn-ctx)]
+          (timers/stop timer-ctx)
+          (recur system (rest ops) new-scn-ctx)))
       )
     ))
 
