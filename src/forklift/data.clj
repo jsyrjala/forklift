@@ -87,8 +87,7 @@
 (defn execute-scenario [system scenario params finish-fn]
   (info "Run scenario:" (-> scenario :desc))
 
-  (let [scn-ctx {:params params
-                 ::scenario scenario}
+  (let [scn-ctx (assoc params ::scenario scenario)
         ops (-> scenario :ops)
         {:keys [stats]} system]
 
@@ -110,14 +109,17 @@
 (defn- create-thread [name system scenario params finish-fn]
   (future (execute-scenario system scenario params finish-fn)))
 
-(defn start-run [system suite finish-fn]
+(defn start-run [system suite suite-config finish-fn]
   (let [{:keys [scenario
-                params] :as data} suite
+                run-params] :as data} suite
+        {:keys [global-params]} suite-config
+        params {:global-params global-params
+                :run-params run-params}
         scn-name (-> scenario :name)]
     (create-thread scn-name system scenario params finish-fn)
     ))
 
-(defn constant-rate-loader [system opts suite]
+(defn constant-rate-loader [system opts suite suite-config]
   (debug "Create constant-rate-loader" opts)
   (let [{:keys [rate
                 scenario
@@ -132,13 +134,13 @@
       (.acquire rate-limiter)
       (debug "Acquired slot")
 
-      (start-run system suite (fn []) )
+      (start-run system suite suite-config (fn []) )
       )
     (debug "Stop constant-rate-loader")
     )
   )
 
-(defn constant-users-loader [system opts suite]
+(defn constant-users-loader [system opts suite suite-config]
   (debug "Create constant-users-loader" opts)
   (let [{:keys [users
                 scenario
@@ -153,14 +155,14 @@
     )
   ))
 
-(defn create-loader [system suite]
+(defn create-loader [system suite suite-config]
   (let [load (-> suite :load)
         type (-> load :type)]
     (info "create-loader " type load suite)
     (cond (= type :constant-rate)
-          (future (constant-rate-loader system (suite :load) suite))
+          (future (constant-rate-loader system (suite :load) suite suite-config))
           (= type :constant-users)
-          (future (constant-users-loader system (suite :load) suite))
+          (future (constant-users-loader system (suite :load) suite suite-config))
           :default (throw+ {:error :unsupported-load-type
                             :msg (str type " is not supported")})
           )
@@ -169,13 +171,15 @@
 
 (defn run-load
   "Starts load-test asynchronously."
-  [system suites]
-  (info "run-load start" suites)
+  [system suite-config]
+  (info "run-load start" suite-config)
   ;; TODO validate scenarios with schema?
-  (let [loader-futures (doall (map #(create-loader system %) suites))
+  (let [{:keys [suites]} suite-config
+        loader-futures (doall (map #(create-loader system % suite-config) suites))
         ]
     (debug "loader threads created")
     loader-futures
     )
+
   )
 

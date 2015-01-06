@@ -74,7 +74,7 @@
      (let [loaders (forklift/run-load {:running-fn running-fn
                                        :metrics metrics
                                        :stats stats}
-                                      suites)]
+                                      suite-config)]
        (doall (map deref loaders)))
      (when after-fn
        ;; TODO exec threads are still running at this point

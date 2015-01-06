@@ -12,15 +12,14 @@
 ;;
 ;; function that is tested
 ;; Function must take single parameter ctx
-;; ctx => {:params somedata} - somedata is defined in suite configuration
+;; ctx => {:run-params somedata :global-param otherdata} - somedata is defined in suite configuration
 ;; Function can modify ctx for following ops by returning modified ctx
 ;; e.g. make a request, store some data to ctx and following ops may use the data
 ;;
 (defn create-workflow [ctx]
-  (trace ctx)
-  (let [{:keys [workflow-ids
-                nflow-url
-                workflow-type]} (-> ctx :params)
+  (let [{:keys [nflow-url
+                workflow-type]} (-> ctx :run-params)
+        workflow-ids (-> ctx :global-params :workflow-ids)
         body {:type workflow-type}
         result (client/put (str nflow-url "/v1/workflow-instance")
                                 {:accept :json
@@ -28,8 +27,7 @@
                                  :as :json
                                  :body (json/generate-string body)})]
 
-    (let [workflow-id (-> result :body :id)
-          x (assoc ctx (str "xxx-" workflow-id) workflow-id)]
+    (let [workflow-id (-> result :body :id)]
       (swap! workflow-ids conj workflow-id))))
 
 ;; scenario is one use case, test case or a sequence operations
@@ -57,9 +55,8 @@
 (def basic-suite-users
   {:scenario basic-workflow
    :desc "Constant users"
-   :params {:nflow-url "http://localhost:7500/api"
-            :workflow-type "demo"
-            :workflow-ids (atom [])}
+   :run-params {:nflow-url "http://localhost:7500/api"
+                :workflow-type "demo"}
    ;; configuration for loader
    :load {;; constant-users loader tries to make sure
           ;; that there is N scenarios running all the time
@@ -77,9 +74,8 @@
    ;; TODO needs to have global-params and run-params
    ;; global params do not reset between runs
    ;; run-params reset between runs
-   :params {:nflow-url "http://localhost:7500/api"
-            :workflow-type "demo"
-            :workflow-ids (atom [])}
+   :run-params {:nflow-url "http://localhost:7500/api"
+                :workflow-type "demo"}
    :load {;; constant-rate loader starts a new scenario N times a second
           :type :constant-rate
           :rate 1
@@ -87,15 +83,22 @@
           :warmup-period 1
   }})
 
+(defn- workflow-stats [suite-config]
+  (info "Compute workflow stats")
+  (let [workflow-ids (-> suite-config :global-params :workflow-ids)]
+    (info "workflowids" workflow-ids)
+    )
+  )
+
 ;; suite config is a list of suites and ending condition
 (def suite-config {;; duration of loading run in millis
                    ;; => all loaders stop after N millis
                    :duration (* 10 1000)
+                   :global-params {:workflow-ids (atom [])}
                    :suites [;;basic-suite-users
                             basic-suite-rate]
                    ;; execute function before starting
                    :before-fn (fn [suite-config]
                                 (info "before-fn called"))
                    ;; execute after finishing
-                   :after-fn (fn [suite-config]
-                               (info "after-fn called"))})
+                   :after-fn workflow-stats})

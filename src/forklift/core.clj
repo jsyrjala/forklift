@@ -18,11 +18,11 @@
 
   (let [suite-config nflow/suite-config
         load-tester (:load-tester system)
-        loaders (lt/start-load-test load-tester suite-config)
         ]
 
-    (doall (map deref loaders)))
+    (lt/start-load-test load-tester suite-config)
+    )
 
-  (info "run end")
   (shutdown-agents)
+  (info "Forklift stopped")
   )
