@@ -16,8 +16,7 @@
     (alter-var-root #'system (constantly app))
     )
 
-  (let [suite-config {:duration (* 10 1000)
-                      :suites [nflow/basic-suite2]}
+  (let [suite-config nflow/suite-config
         load-tester (:load-tester system)
         loaders (lt/start-load-test load-tester suite-config)
         ]

@@ -1,13 +1,21 @@
 (ns data.nflow
   (:require [forklift.data :refer [run-load exec scenario pause]]
-            [clojure.tools.logging :refer [info debug error]]
+            [clojure.tools.logging :refer [trace info debug error]]
             [clj-http.client :as client]
             [cheshire.core :as json]
   ))
 
 
+;; TODO no exception handling yet -> don't throw exceptions
+;; TODO no success/failure handling yet -> make sure you always succeed
+;; TODO assumes that request always succeeds
+;;
+;; function that is tested
+;; Function must take single parameter ctx
+;; ctx => {:params somedata} - somedata is defined in suite configuration
+;; Function must return ctx
+;; Function can modify ctx
 (defn create-workflow [ctx]
-  ;;(info "create-workflow" ctx)
   (let [{:keys [workflow-ids
                 nflow-url
                 workflow-type]} (-> ctx :params)
@@ -15,36 +23,68 @@
         result (client/put (str nflow-url "/v1/workflow-instance")
                                 {:accept :json
                                  :content-type :json
+                                 :as :json
                                  :body (json/generate-string body)})]
-    (info "result" result)
-    ctx
+    (trace "result" result)
+    (let [workflow-id (-> result :body :id)]
+      (swap! workflow-ids conj workflow-id))
   ))
 
+;; scenario is one use case, test case or a sequence operations
+;; executed by a single user
+;;
+;; 1. create new workflow
+;; 2. wait a bit
 (def basic-workflow
-  (scenario "Basic load"
-            (exec "Create new BasicWorkflow"
-                  create-workflow)
-            (pause 10)))
+  (scenario
+   ;; human readable description for scenarion
+   "Basic workflow"
+   ;; 0-N operations that are executed sequentially
+   ;; exec marks executable operation
+   (exec
+    ;; description of the operation
+    "Create a new Workflow"
+    ;; function that is executed
+    create-workflow)
+   ;; pause of 10 millis
+   (pause 10)))
 
-(def basic-suite
+;; suite parametrizes scenario with
+;; - loader that controls how often and when the scenario is executed
+;; - configuration data, e.g. what server to contact
+(def basic-suite-users
   {:scenario basic-workflow
-   :desc ""
+   :desc "Constant users"
    :params {:nflow-url "http://localhost:7500/api"
             :workflow-type "demo"
             :workflow-ids (atom [])}
-   :load {:type :constant-users
-          ;; real-world :users value is < 10
+   ;; configuration for loader
+   :load {;; constant-users loader tries to make sure
+          ;; that there is N scenarios running all the time
+          :type :constant-users
+          ;; real-world :users value is likely < 10
           ;; values greater than 50-100 are too heavy for single machine
-          :users 10
+          :users 1
+          ;; TODO not implemented currently
           :warmup-period 60
   }})
 
-(def basic-suite2
+(def basic-suite-rate
   {:scenario basic-workflow
-   :desc ""
+   :desc "Constant rate"
+   ;; TODO needs to have global-params and run-params
    :params {:nflow-url "http://localhost:7500/api"
             :workflow-type "demo"
             :workflow-ids (atom [])}
-   :load {:type :constant-rate
+   :load {;; constant-rate loader starts a new scenario N times a second
+          :type :constant-rate
           :rate 1
+          ;; rampup period in seconds
+          :warmup-period 60
   }})
+
+;; suite config is a list of suites and ending condition
+(def suite-config {;; duration of loading run in millis
+                   :duration (* 10 1000)
+                   :suites [basic-suite-users
+                            basic-suite-rate]})

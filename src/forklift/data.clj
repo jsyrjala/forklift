@@ -33,9 +33,9 @@
   ([desc duration]
    (operation desc
               (fn pause [ctx]
-                (debug "pause start")
+                (trace "pause start")
                 (Thread/sleep duration)
-                (debug "pause end")
+                (trace "pause end")
                 )
               :pause))
   ([desc lower upper]
