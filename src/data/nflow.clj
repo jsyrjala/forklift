@@ -111,7 +111,9 @@
                             #(mapv (fn [action]
                                      (let [action (update-in action [:executionStartTime] parse-date)
                                            action (update-in action [:executionEndTime] parse-date)
-                                           action (dissoc action :stateText)]
+                                           action (dissoc action :stateText)
+                                           action (assoc action :run-time (time-diff (action :executionEndTime)
+                                                                                     (action :executionStartTime) ))]
                                        action)) %))
         ;; calculate some time differences
         workflow (assoc workflow :total-time (time-diff (workflow :modified) (workflow :created)))
@@ -154,7 +156,7 @@
 ;; suite config is a list of suites and ending condition
 (def suite-config {;; duration of loading run in millis
                    ;; => all loaders stop after N millis
-                   :duration (seconds 10)
+                   :duration (seconds 20)
                    :params {:nflow-url "http://localhost:7500/api"
                             :workflow-ids (atom #{})
                             :finished-states ["done"]

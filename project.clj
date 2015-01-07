@@ -30,6 +30,7 @@
 
                  [incanter/incanter-core "1.9.0"]
                  [incanter/incanter-charts "1.9.0"]
+                 [org.flatland/ordered "1.5.2"]
                  ]
   :main forklift.main
   :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"]
