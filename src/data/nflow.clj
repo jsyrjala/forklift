@@ -5,6 +5,7 @@
             [cheshire.core :as json]
             [clj-time.format :as date]
             [clj-time.coerce :as coerce]
+            [data.stats :as stats]
   ))
 
 (def formatter (date/formatters :date-time))
@@ -123,7 +124,9 @@
   (info "Fetch workflows from server")
   (let [ready (atom [])
         {:keys [workflow-ids
-                finished-states]} (-> suite-config :params)]
+                finished-states
+                wait-before-stats]} (-> suite-config :params)]
+    (Thread/sleep (or wait-before-stats 1000))
 
     (while (not-empty @workflow-ids)
       (Thread/sleep 1000)
@@ -137,18 +140,25 @@
     (sort-by :created @ready)))
 
 (defn- workflow-stats [suite-config]
-  (let [workflows (fetch-workflows suite-config)]
-    (info "Compute workflow stats")
+  (let [workflows (fetch-workflows suite-config)
+        statistics (stats/workflow-stats workflows)]
+    (info "statistics" statistics)
+    (clojure.pprint/pprint statistics)
     )
   )
+
+(defn seconds [value] (* value 1000))
+
+(defn minutes [value] (* 60 (seconds value)))
 
 ;; suite config is a list of suites and ending condition
 (def suite-config {;; duration of loading run in millis
                    ;; => all loaders stop after N millis
-                   :duration (* 10 1000)
+                   :duration (seconds 10)
                    :params {:nflow-url "http://localhost:7500/api"
                             :workflow-ids (atom #{})
-                            :finished-states ["done"]}
+                            :finished-states ["done"]
+                            :wait-before-stats (seconds 13)}
                    :suites [basic-suite-users
                             ;;basic-suite-rate
                             ]
