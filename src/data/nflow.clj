@@ -42,57 +42,7 @@
     (-> result :body)
     )
   )
-;; scenario is one use case, test case or a sequence operations
-;; executed by a single user
-;;
-;; 1. create new workflow
-;; 2. wait a bit
-(def basic-workflow
-  (scenario
-   ;; human readable description for scenarion
-   "Basic workflow"
-   ;; 0-N operations that are executed sequentially
-   ;; exec marks executable operation
-   (exec
-    ;; description of the operation
-    "Create a new Workflow"
-    ;; function that is executed
-    create-workflow)
-   ;; pause of 10 millis
-   (pause 10)))
 
-;; suite parametrizes scenario with
-;; - loader that controls how often and when the scenario is executed
-;; - configuration data, e.g. what server to contact
-(def basic-suite-users
-  {:scenario basic-workflow
-   :desc "Constant users"
-   :params {:nflow-url "http://localhost:7500/api"
-            :workflow-type "demo"}
-   ;; configuration for loader
-   :load {;; constant-users loader tries to make sure
-          ;; that there is N scenarios running all the time
-          :type :constant-users
-          ;; real-world :users value is likely < 10
-          ;; values greater than 50-100 are too heavy for single machine
-          :users 10
-          ;; TODO not implemented currently
-          :warmup-period 60
-  }})
-
-(def basic-suite-rate
-  {:scenario basic-workflow
-   :desc "Constant rate"
-   ;; TODO needs to have global-params and run-params
-   ;; global params do not reset between runs
-   ;; run-params reset between runs
-   :params {:workflow-type "demo"}
-   :load {;; constant-rate loader starts a new scenario N times a second
-          :type :constant-rate
-          :rate 1
-          ;; rampup period in seconds
-          :warmup-period 1
-  }})
 
 (defn- parse-date [value]
   (if value
@@ -152,6 +102,64 @@
 (defn seconds [value] (* value 1000))
 
 (defn minutes [value] (* 60 (seconds value)))
+
+;; scenario is one use case, test case or a sequence operations
+;; executed by a single user
+;;
+;; 1. create new workflow
+;; 2. wait a bit
+(def basic-workflow
+  (scenario
+   ;; human readable description for scenarion
+   "Basic workflow"
+   ;; 0-N operations that are executed sequentially
+   ;; exec marks executable operation
+   (exec
+    ;; description of the operation
+    "Create a new Workflow"
+    ;; function that is executed
+    create-workflow)
+   ;; pause of 10 millis
+   (pause 10)))
+
+;; suite parametrizes scenario with
+;; - loader that controls how often and when the scenario is executed
+;; - configuration data, e.g. what server to contact
+(def basic-suite-users
+  {:scenario basic-workflow
+   :desc "Constant users"
+   ;; TODO implement warmup-runs
+   :warmup-runs 10
+   :params {:nflow-url "http://localhost:7500/api"
+            :workflow-type "demo"}
+   ;; configuration for loader
+   :load {;; constant-users loader tries to make sure
+          ;; that there is N scenarios running all the time
+          :type :constant-users
+          ;; real-world :users value is likely < 10
+          ;; values greater than 50-100 are too heavy for single machine
+          :users 10
+          ;; TODO not implemented currently
+          ;; TODO rename to rampup-period
+          :warmup-period 60
+  }})
+
+(def basic-suite-rate
+  {:scenario basic-workflow
+   :desc "Constant rate"
+   ;; TODO implement warmup-runs
+   :warmup-runs 10
+   ;; TODO needs to have global-params and run-params
+   ;; global params do not reset between runs
+   ;; run-params reset between runs
+   :params {:workflow-type "demo"}
+   :load {;; constant-rate loader starts a new scenario N times a second
+          :type :constant-rate
+          :rate 1
+          ;; rampup period in seconds
+          ;; TODO rename to rampup-period
+          :warmup-period 1
+  }})
 
 ;; suite config is a list of suites and ending condition
 (def suite-config {;; duration of loading run in millis
