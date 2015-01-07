@@ -20,11 +20,11 @@
 ;; e.g. make a request, store some data to ctx and following ops may use the data
 ;;
 (defn- create-workflow [ctx]
-  (let [{:keys [nflow-url
+  (let [{:keys [nflow-urls
                 workflow-type]} (-> ctx :params)
         workflow-ids (-> ctx :params :workflow-ids)
         body {:type workflow-type}
-        result (client/put (str nflow-url "/v1/workflow-instance")
+        result (client/put (str (rand-nth nflow-urls) "/v1/workflow-instance")
                            {:as :json
                             :accept :json
                             :content-type :json
@@ -34,8 +34,8 @@
       (swap! workflow-ids conj workflow-id))))
 
 (defn- get-workflow [ctx workflow-id]
-  (let [{:keys [nflow-url]} (-> ctx :params)
-        url (str nflow-url "/v1/workflow-instance/" workflow-id)
+  (let [{:keys [nflow-urls]} (-> ctx :params)
+        url (str (rand-nth nflow-urls) "/v1/workflow-instance/" workflow-id)
         result (client/get url
                            {:as :json
                             :accept :json})]
@@ -130,7 +130,7 @@
    :desc "Constant users"
    ;; TODO implement warmup-runs
    :warmup-runs 10
-   :params {:nflow-url "http://localhost:7500/api"
+   :params {:nflow-urls ["http://localhost:7500/api"]
             :workflow-type "demo"}
    ;; configuration for loader
    :load {;; constant-users loader tries to make sure
@@ -165,7 +165,11 @@
 (def suite-config {;; duration of loading run in millis
                    ;; => all loaders stop after N millis
                    :duration (seconds 20)
-                   :params {:nflow-url "http://localhost:7500/api"
+                   :params {;; if many urls, random url is selected at
+                            ;; every request
+                            :nflow-urls ["http://localhost:7500/api"
+                                         ;;"http://localhost:7501/api"
+                                         ]
                             :workflow-ids (atom #{})
                             :finished-states ["done"]
                             :wait-before-stats (seconds 13)}
