@@ -110,11 +110,10 @@
   (future (execute-scenario system scenario params finish-fn)))
 
 (defn start-run [system suite suite-config finish-fn]
-  (let [{:keys [scenario
-                run-params] :as data} suite
-        {:keys [global-params]} suite-config
-        params {:global-params global-params
-                :run-params run-params}
+  (let [{:keys [scenario] :as data} suite
+        run-params (-> suite :params)
+        global-params (-> suite-config :params)
+        params {:params (merge global-params run-params)}
         scn-name (-> scenario :name)]
     (create-thread scn-name system scenario params finish-fn)
     ))
@@ -129,10 +128,8 @@
         ]
 
     (while (running-fn)
-      (debug "Aqcuiring slot")
       ;; TODO use timeout
       (.acquire rate-limiter)
-      (debug "Acquired slot")
 
       (start-run system suite suite-config (fn []) )
       )
@@ -151,7 +148,7 @@
     (while (running-fn)
       ;; TODO use tryAcquire with timeout
       (.acquire user-slots)
-      (start-run system suite (fn [] (.release user-slots)))
+      (start-run system suite suite-config (fn [] (.release user-slots)))
     )
   ))
 

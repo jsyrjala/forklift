@@ -69,6 +69,7 @@
                  after-fn
                  suites]} suite-config
          running-fn (running-creator duration)]
+     ;; TODO handle exceptions
      (when before-fn
        (before-fn suite-config))
      (let [loaders (forklift/run-load {:running-fn running-fn
@@ -76,6 +77,7 @@
                                        :stats stats}
                                       suite-config)]
        (doall (map deref loaders)))
+     ;; TODO handle exceptions
      (when after-fn
        ;; TODO exec threads are still running at this point
        ;; TODO change loaders to wait for all sub threads to finish

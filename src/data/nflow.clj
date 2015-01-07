@@ -3,9 +3,11 @@
             [clojure.tools.logging :refer [trace info debug error]]
             [clj-http.client :as client]
             [cheshire.core :as json]
+            [clj-time.format :as date]
+            [clj-time.coerce :as coerce]
   ))
 
-
+(def formatter (date/formatters :date-time))
 ;; TODO no exception handling yet -> don't throw exceptions
 ;; TODO no success/failure handling yet -> make sure you always succeed
 ;; TODO assumes that request always succeeds
@@ -16,20 +18,29 @@
 ;; Function can modify ctx for following ops by returning modified ctx
 ;; e.g. make a request, store some data to ctx and following ops may use the data
 ;;
-(defn create-workflow [ctx]
+(defn- create-workflow [ctx]
   (let [{:keys [nflow-url
-                workflow-type]} (-> ctx :run-params)
-        workflow-ids (-> ctx :global-params :workflow-ids)
+                workflow-type]} (-> ctx :params)
+        workflow-ids (-> ctx :params :workflow-ids)
         body {:type workflow-type}
         result (client/put (str nflow-url "/v1/workflow-instance")
-                                {:accept :json
-                                 :content-type :json
-                                 :as :json
-                                 :body (json/generate-string body)})]
+                           {:as :json
+                            :accept :json
+                            :content-type :json
+                            :body (json/generate-string body)})]
 
     (let [workflow-id (-> result :body :id)]
       (swap! workflow-ids conj workflow-id))))
 
+(defn- get-workflow [ctx workflow-id]
+  (let [{:keys [nflow-url]} (-> ctx :params)
+        url (str nflow-url "/v1/workflow-instance/" workflow-id)
+        result (client/get url
+                           {:as :json
+                            :accept :json})]
+    (-> result :body)
+    )
+  )
 ;; scenario is one use case, test case or a sequence operations
 ;; executed by a single user
 ;;
@@ -55,15 +66,15 @@
 (def basic-suite-users
   {:scenario basic-workflow
    :desc "Constant users"
-   :run-params {:nflow-url "http://localhost:7500/api"
-                :workflow-type "demo"}
+   :params {:nflow-url "http://localhost:7500/api"
+            :workflow-type "demo"}
    ;; configuration for loader
    :load {;; constant-users loader tries to make sure
           ;; that there is N scenarios running all the time
           :type :constant-users
           ;; real-world :users value is likely < 10
           ;; values greater than 50-100 are too heavy for single machine
-          :users 1
+          :users 10
           ;; TODO not implemented currently
           :warmup-period 60
   }})
@@ -74,8 +85,7 @@
    ;; TODO needs to have global-params and run-params
    ;; global params do not reset between runs
    ;; run-params reset between runs
-   :run-params {:nflow-url "http://localhost:7500/api"
-                :workflow-type "demo"}
+   :params {:workflow-type "demo"}
    :load {;; constant-rate loader starts a new scenario N times a second
           :type :constant-rate
           :rate 1
@@ -83,10 +93,52 @@
           :warmup-period 1
   }})
 
+(defn- parse-date [value]
+  (if value
+    (date/parse formatter value)
+    nil))
+
+(defn- time-diff [value1 value2]
+  (- (coerce/to-long value1) (coerce/to-long value2)))
+
+(defn- parse-workflow [workflow]
+  (let [workflow (update-in workflow [:started] parse-date)
+        workflow (update-in workflow [:created] parse-date)
+        workflow (update-in workflow [:modified] parse-date)
+        workflow (dissoc workflow :stateText)
+        workflow (update-in workflow [:actions]
+                            #(mapv (fn [action]
+                                     (let [action (update-in action [:executionStartTime] parse-date)
+                                           action (update-in action [:executionEndTime] parse-date)
+                                           action (dissoc action :stateText)]
+                                       action)) %))
+        ;; calculate some time differences
+        workflow (assoc workflow :total-time (time-diff (workflow :modified) (workflow :created)))
+        workflow (assoc workflow :run-time (time-diff (workflow :modified) (workflow :started)))
+        workflow (assoc workflow :queue-time (time-diff (workflow :started) (workflow :created)))]
+    workflow
+  ))
+
+(defn- fetch-workflows [suite-config]
+  (info "Fetch workflows from server")
+  (let [ready (atom [])
+        {:keys [workflow-ids
+                finished-states]} (-> suite-config :params)]
+
+    (while (not-empty @workflow-ids)
+      (Thread/sleep 1000)
+      (doseq [id @workflow-ids]
+        (let [workflow (get-workflow suite-config id)]
+          (when (some #{(:state workflow)} finished-states)
+            (swap! workflow-ids disj id)
+            (swap! ready conj (parse-workflow workflow))
+            ))))
+    (info "Fetched" (count @ready) "workflows")
+    (sort-by :created @ready)))
+
 (defn- workflow-stats [suite-config]
-  (info "Compute workflow stats")
-  (let [workflow-ids (-> suite-config :global-params :workflow-ids)]
-    (info "workflowids" workflow-ids)
+  (let [workflows (fetch-workflows suite-config)]
+    (info "Compute workflow stats")
     )
   )
 
@@ -94,9 +146,12 @@
 (def suite-config {;; duration of loading run in millis
                    ;; => all loaders stop after N millis
                    :duration (* 10 1000)
-                   :global-params {:workflow-ids (atom [])}
-                   :suites [;;basic-suite-users
-                            basic-suite-rate]
+                   :params {:nflow-url "http://localhost:7500/api"
+                            :workflow-ids (atom #{})
+                            :finished-states ["done"]}
+                   :suites [basic-suite-users
+                            ;;basic-suite-rate
+                            ]
                    ;; execute function before starting
                    :before-fn (fn [suite-config]
                                 (info "before-fn called"))

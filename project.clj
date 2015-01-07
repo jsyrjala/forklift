@@ -28,6 +28,8 @@
                  [clj-http "1.0.1"]
                  [cheshire "5.4.0"]
 
+                 [incanter/incanter-core "1.9.0"]
+                 [incanter/incanter-charts "1.9.0"]
                  ]
   :main forklift.main
   :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC"]
