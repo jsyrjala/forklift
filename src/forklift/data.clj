@@ -122,9 +122,9 @@
   (debug "Create constant-rate-loader" opts)
   (let [{:keys [rate
                 scenario
-                warmup-period]} opts
+                rampup-period]} opts
         {:keys [running-fn]} system
-        rate-limiter (RateLimiter/create (double rate) (or warmup-period 0) TimeUnit/SECONDS)
+        rate-limiter (RateLimiter/create (double rate) (or rampup-period 0) TimeUnit/SECONDS)
         ]
 
     (while (running-fn)
@@ -141,7 +141,7 @@
   (debug "Create constant-users-loader" opts)
   (let [{:keys [users
                 scenario
-                warmup-period]} opts
+                rampup-period]} opts
         {:keys [running-fn]} system
         user-slots (new Semaphore users)
         ]

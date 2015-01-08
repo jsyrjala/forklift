@@ -140,8 +140,7 @@
           ;; values greater than 50-100 are too heavy for single machine
           :users 10
           ;; TODO not implemented currently
-          ;; TODO rename to rampup-period
-          :warmup-period 60
+          :rampup-period 60
   }})
 
 (def basic-suite-rate
@@ -157,8 +156,7 @@
           :type :constant-rate
           :rate 1
           ;; rampup period in seconds
-          ;; TODO rename to rampup-period
-          :warmup-period 1
+          :rampup-period 1
   }})
 
 ;; suite config is a list of suites and ending condition
